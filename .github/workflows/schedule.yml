@@ -1,0 +1,17 @@
+name: regenerate-calendars
+on:
+  schedule:
+    - cron: "0 */6 * * *"  # every 6h; sheet edits auto-publish via export link
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 schedule_to_ics.py --group all --weeks 3
+      - run: |
+          git config user.name "schedule-bot" && git config user.email "schedule-bot@users.noreply.github.com"
+          git add -A calendars/ index.html
+          git diff --cached --quiet || git commit -m "regen calendars $(date -u +%F)" && git push
