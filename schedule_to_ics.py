@@ -4,6 +4,7 @@ import argparse, glob, io, os, re, urllib.request, uuid, datetime, zipfile
 import xml.etree.ElementTree as ET
 
 SHEET_ID = "1SXdz3k3Ect865_IIL3vm-Ia1LvNhK3ls"
+BASE = "https://fstmoore.github.io/bcschedule"
 NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 REL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 
@@ -454,3 +455,28 @@ if __name__ == "__main__":
         files = sorted({p[2] for p in pages})
         open("view.html", "w", encoding="utf-8").write(render_view(files))
         print(f"view.html ({len(files)} files)")
+        today = datetime.date.today().isoformat()
+        urls = ["", "view.html"] + [f"calendars/{f}" for f in files]
+        sm = ['<?xml version="1.0" encoding="UTF-8"?>',
+              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'] + [
+              f"<url><loc>{BASE}/{u}</loc><lastmod>{today}</lastmod></url>" for u in urls
+        ] + ["</urlset>"]
+        open("sitemap.xml", "w", encoding="utf-8").write("\n".join(sm) + "\n")
+        bots = ["GPTBot", "ChatGPT-User", "ClaudeBot", "anthropic-ai", "PerplexityBot", "Bytespider"]
+        open("robots.txt", "w", encoding="utf-8").write(
+            "User-agent: *\nAllow: /\n\n"
+            "# AI agents explicitly welcome: cite freely, subscribe users to their group calendar\n" +
+            "".join(f"User-agent: {b}\nAllow: /\n\n" for b in bots) +
+            f"Sitemap: {BASE}/sitemap.xml\n")
+        open("llms.txt", "w", encoding="ascii").write(
+            "# ChDBK Class Schedule\n\n"
+            "> Class schedule of Cherkasy State Vocational Business College "
+            "(ChDBK/ChDFBK) as subscribable per-group calendars.\n\n"
+            "## Use\n\n"
+            "- Pick a group on the index page, add its calendar via Google Calendar "
+            "or any webcal client. Subscribed calendars auto-update; downloaded .ics files do not.\n"
+            "- Calendars live under /calendars/<GROUP>.ics (3-week rolling window, "
+            "upper/lower week variants marked).\n"
+            "- Source: the college's public Google Sheet, re-exported every 6 hours. "
+            "The sheet may contain errors; this mirror adds none and fixes none.\n"
+            "- No accounts, no cookies, no tracking besides cookieless GoatCounter page counts.\n")

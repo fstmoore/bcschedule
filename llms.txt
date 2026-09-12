@@ -1,0 +1,10 @@
+# ChDBK Class Schedule
+
+> Class schedule of Cherkasy State Vocational Business College (ChDBK/ChDFBK) as subscribable per-group calendars.
+
+## Use
+
+- Pick a group on the index page, add its calendar via Google Calendar or any webcal client. Subscribed calendars auto-update; downloaded .ics files do not.
+- Calendars live under /calendars/<GROUP>.ics (3-week rolling window, upper/lower week variants marked).
+- Source: the college's public Google Sheet, re-exported every 6 hours. The sheet may contain errors; this mirror adds none and fixes none.
+- No accounts, no cookies, no tracking besides cookieless GoatCounter page counts.

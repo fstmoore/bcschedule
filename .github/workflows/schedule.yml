@@ -13,5 +13,5 @@ jobs:
       - run: python3 schedule_to_ics.py --group all --weeks 3
       - run: |
           git config user.name "schedule-bot" && git config user.email "schedule-bot@users.noreply.github.com"
-           git add -A calendars/ index.html view.html
+           git add -A calendars/ index.html view.html sitemap.xml
           git diff --cached --quiet || git commit -m "regen calendars $(date -u +%F)" && git push
