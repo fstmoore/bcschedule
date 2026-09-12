@@ -371,6 +371,7 @@ def render_index(pages):
 <meta property="og:title" content="Нормальний розклад, який живе у календарі">
 <meta property="og:description" content="Обирай групу — пари самі прийдуть у твій календар. Без гугл-таблички.">
 <script data-goatcounter="https://bcschedule.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<meta name="google-site-verification" content="uGk621K82j_O0Twhiou4c1LqOzossy-005O0nijx-Ig" />
 <style>{_CSS}</style></head><body><div class="wrap">
 <div class="hero"><h1>Нормальний розклад, <br>який живе у календарі</h1>
 <svg class="vine" viewBox="0 0 420 34" aria-hidden="true">
