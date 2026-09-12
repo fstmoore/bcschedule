@@ -80,11 +80,18 @@ def parse_group(rows, group):
         g = next(i for i, c in enumerate(rows[0]) if group in c)
     g //= 6; g *= 6
     subj_c, num_c = g + 2, g + 1
-    # ponytail: day blocks from first group's numbering (rows shared across groups); breaks if sheet misaligns rows
-    day_of, day = {}, -1
+    # ponytail: day boundary = pair numbers wrapping down in THIS group's column;
+    # the old B-col '1' breaks when groups run different pairs per day
+    day_of, day, prev = {}, -1, None
     for r in range(len(rows)):
-        if len(rows[r]) > 1 and rows[r][1].strip() == "1":
-            day += 1
+        v = rows[r][num_c].strip() if num_c < len(rows[r]) else ""
+        if v.isdigit():
+            n = int(v)
+            if day < 0:
+                day = 0
+            elif prev is not None and n < prev:
+                day += 1
+            prev = n
         day_of[r] = day
     lessons = []
     for r in range(1, len(rows)):
@@ -94,44 +101,94 @@ def parse_group(rows, group):
         day = day_of[r]
         if cell(num_c).isdigit():
             n = int(cell(num_c))
-            subj = lambda c: rows[r - 1][c].strip() if r - 1 >= 0 and c < len(rows[r - 1]) else ""
-            main = subj(subj_c)
-            sides = []
-            if len(main) > 2 and main not in ("А", "Б"):
-                sides = [(subj_c, "", "")]
-            else:  # A/B split: subjects sit in sub-cols beside the А/Б markers
+            ROOM = r"\d{2,4}[а-яА-Яa-zA-Z]?|СЗ"
+            def subj_at(srow, c):
+                return rows[srow][c].strip() if 0 <= srow < len(rows) and c < len(rows[srow]) else ""
+            def teach_at(c, rws):  # '.' = teacher; rooms/subjects never contain it... except 'Англ. мова' — hence explicit rows
+                for rr in rws:
+                    v = rows[rr][c].strip() if 0 <= rr < len(rows) and c < len(rows[rr]) else ""
+                    if "." in v:
+                        return v
+                return ""
+            def find_sides(srow):
+                main = subj_at(srow, subj_c)
+                if len(main) > 2 and main not in ("А", "Б") and not re.fullmatch(ROOM, main):
+                    return [(subj_c, "", "")]
+                sides = []  # A/B split: subjects sit in sub-cols beside the А/Б markers; '-' = no lesson
                 for c, tag, sub in ((subj_c + 1, " (А)", "А"), (subj_c + 3, " (Б)", "Б"),
                                     (subj_c - 1, " (А)", "А"), (subj_c + 2, " (Б)", "Б")):
-                    if c != num_c and len(subj(c)) > 2:
+                    v = subj_at(srow, c)
+                    if c != num_c and len(v) > 2 and not re.fullmatch(ROOM, v):
                         sides.append((c, tag, sub))
                         if len(sides) == 2:
                             break
-            for c, tag, sub in sides:
-                # ponytail: teacher/room row offsets vary by block (merged cells); '.' = teacher, digits/СЗ = room
-                def at(rr):
-                    return rows[rr][c].strip() if 0 <= rr < len(rows) and c < len(rows[rr]) else ""
-                t = next((v for rr in (r, r + 1) for v in (at(rr),) if "." in v), "")
-                def pick_room():  # match per line so alt-week rooms (multi-line cell) survive
-                    for rr in (r + 1, r + 2, r + 3):
-                        m = [ln.strip() for ln in at(rr).split("\n")
-                             if re.fullmatch(r"\d{2,4}[а-яА-Яa-zA-Z]?|СЗ", ln.strip())]
-                        if m:
-                            return "\n".join(m)
-                    return ""
-                room = pick_room()
-                # alternating weeks live in one cell as 2 lines (dashed divider); teachers/rooms may split too
-                S = [x.strip() for x in subj(c).split("\n") if x.strip()]
-                T = [x.strip() for x in t.split("\n") if x.strip()] or [""]
-                R = [x.strip() for x in room.split("\n") if x.strip()] or [""]
-                if len(S) < 2:
-                    lessons.append({"day": day, "pair": n, "sub": sub, "subject": subj(c) + tag,
-                                    "teacher": t, "room": room})
-                else:  # line 1 = чисельник (alt 0), line 2 = знаменник (alt 1)
+                return sides
+            # new sheet: alt weeks are stacked halves (r-1 = чис., r+2 = знам.) —
+            # unless a number row sits between (then it's the next pair, not знам.);
+            # old sheet: both variants in one cell (multiline) — still handled below
+            halves = []  # (alt, sub, col, tag, teacher, subjects)
+            for srow, trows, alt in ((r - 1, (r, r + 1), 0), (r + 2, (r + 3, r + 4), 1)):
+                if alt == 1 and any((rows[rr][num_c].strip() if 0 <= rr < len(rows) and num_c < len(rows[rr]) else "").isdigit()
+                                    for rr in (r + 1, r + 2, r + 3, r + 4)):
+                    continue
+                for c, tag, sub in find_sides(srow):
+                    t = teach_at(c, trows)
+                    S = [x.strip() for x in subj_at(srow, c).split("\n") if x.strip()]
+                    halves.append((alt, sub, c, tag, t, S))
+            def room_in(c, rws):
+                for rr in rws:
+                    m = [ln.strip() for ln in subj_at(rr, c).split("\n")
+                         if re.fullmatch(ROOM, ln.strip())]
+                    if m:
+                        return "\n".join(m)
+                return ""
+            chis = [h for h in halves if h[0] == 0]
+            znam = [h for h in halves if h[0] == 1]
+            rooms = {}
+            if not znam:  # single pair: room may sit anywhere below (old layout too)
+                for _, _, c, _, _, _ in chis:
+                    rooms[(0, c)] = room_in(c, (r + 1, r + 2, r + 3, r + 4))
+            else:  # split pair: rooms live inside their own half; share across when missing
+                for _, _, c, _, _, _ in chis:
+                    rooms[(0, c)] = room_in(c, (r + 1, r, r + 4))
+                for _, _, c, _, _, _ in znam:
+                    rooms[(1, c)] = room_in(c, (r + 3, r + 4))
+                for _, _, c, _, _, _ in chis:
+                    rooms[(0, c)] = rooms[(0, c)] or rooms.get((1, c), "")
+                for _, _, c, _, _, _ in znam:
+                    rooms[(1, c)] = rooms[(1, c)] or rooms.get((0, c), "")
+            tchis = {h[2]: h[4] for h in chis}
+            zkeys = {(h[1], h[2], h[4] or tchis.get(h[2], "")) for h in znam}
+            ckeys = {(h[1], h[2], h[4]) for h in chis}
+            if not znam:
+                for _, sub, c, tag, t, S in chis:
+                    room = rooms[(0, c)]
+                    if len(S) < 2:
+                        lessons.append({"day": day, "pair": n, "sub": sub, "subject": S[0] + tag,
+                                        "teacher": t, "room": room})
+                        continue
+                    T = [x.strip() for x in t.split("\n") if x.strip()] or [""]
+                    R = [x.strip() for x in room.split("\n") if x.strip()] or [""]
                     for i, suffix in ((0, " (чис.)"), (1, " (знам.)")):
                         lessons.append({"day": day, "pair": n, "alt": i, "sub": sub,
                                         "subject": S[i] + tag + suffix,
                                         "teacher": T[i] if i < len(T) else T[0],
                                         "room": R[i] if i < len(R) else R[0]})
+                continue
+            for _, sub, c, tag, t, S in chis:
+                room = rooms[(0, c)]
+                if (sub, S[0] + tag, t) in zkeys:
+                    lessons.append({"day": day, "pair": n, "sub": sub, "subject": S[0] + tag,
+                                    "teacher": t, "room": room})
+                else:
+                    lessons.append({"day": day, "pair": n, "alt": 0, "sub": sub,
+                                    "subject": S[0] + tag + " (чис.)", "teacher": t, "room": room})
+            for _, sub, c, tag, t, S in znam:
+                t = t or tchis.get(c, "")  # знам. teacher missing -> чис. teacher, like the old split
+                room = rooms[(1, c)]
+                if (sub, S[0] + tag, t) not in ckeys:
+                    lessons.append({"day": day, "pair": n, "alt": 1, "sub": sub,
+                                    "subject": S[0] + tag + " (знам.)", "teacher": t, "room": room})
     return lessons
 
 def to_ics(lessons, start_monday, weeks=1, group="", flip_weeks=False, sub=""):
@@ -200,11 +257,6 @@ padding:18px;display:flex;flex-direction:column;gap:14px}
 .out{background:none;border:0;color:var(--mut);text-decoration:underline;
 text-underline-offset:3px;padding:9px 6px}
 :focus-visible{outline:2px solid var(--pollen);outline-offset:2px}
-dialog{border:1.5px solid var(--moss);border-radius:18px;background:var(--paper);color:var(--ink);
-padding:28px;max-width:min(440px,90vw)}
-dialog::backdrop{background:rgba(20,26,19,.45);backdrop-filter:blur(6px)}
-dialog h3{font-family:Fraunces,Georgia,serif;font-size:30px;margin:0 0 8px}
-dialog p{margin:0 0 16px}
 footer{margin-top:56px;color:var(--mut);font-size:15px}
 """
 
@@ -218,15 +270,58 @@ document.querySelectorAll('#secs h2').forEach(h=>{let n=h.nextElementSibling,v=f
 document.getElementById('q').oninput=apply;
 document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));b.classList.add('on');sheet=b.dataset.s;apply()});
 const abs=p=>new URL(p,location.href).href;
+document.querySelectorAll('[data-gcal]').forEach(a=>a.href='https://calendar.google.com/calendar/r?cid='+encodeURIComponent(abs(a.dataset.gcal)));
 document.querySelectorAll('[data-sub]').forEach(a=>a.href=abs(a.dataset.sub).replace(/^https?/,'webcal'));
-document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>{const u=abs(b.dataset.copy);
-(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>b.textContent='Готово!',()=>prompt('Тримай лінк:',u))});
-const dlg=document.getElementById('warn'),gosub=document.getElementById('gosub'),godl=document.getElementById('godl');
-document.querySelectorAll('[data-dl]').forEach(a=>a.onclick=e=>{e.preventDefault();
-godl.href=a.dataset.dl;gosub.href=abs(a.dataset.dl).replace(/^https?/,'webcal');dlg.showModal()});
-document.getElementById('nope').onclick=()=>dlg.close();
-dlg.onclick=e=>{if(e.target===dlg)dlg.close()};
 """
+
+_VIEW_CSS = """
+.week{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:16px}
+.wday{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px}
+.wday h3{margin:0 0 8px;font-size:14px;color:var(--moss)}
+.ev{border-left:3px solid var(--fern);padding:4px 6px;margin:0 0 8px;font-size:13px}
+.ev b{display:block}.ev span{color:var(--mut)}
+select{font:inherit;background:var(--card);color:var(--ink);border:1.5px solid var(--moss);border-radius:12px;padding:8px;max-width:100%}
+#wl{min-width:110px;text-align:center;color:var(--mut)}
+"""
+
+_VIEW_JS = """
+let W=0,EV=[];
+const f=document.getElementById('f'),grid=document.getElementById('grid'),wl=document.getElementById('wl');
+const load=()=>fetch('calendars/'+encodeURIComponent(f.value)).then(r=>r.text()).then(t=>{EV=parse(t);W=0;draw()});
+const parse=t=>{t=t.replace(/\\r\\n[ \\t]/g,'');const ev=[];let c={};
+for(const l of t.split(/\\r\\n|\\n/)){const i=l.indexOf(':');
+if(l==='BEGIN:VEVENT')c={};else if(l==='END:VEVENT'){if(c.dt)ev.push(c);c={}}
+else if(i>0){const k=l.slice(0,i),v=l.slice(i+1);
+if(k==='DTSTART')c.dt=v;else if(k==='DTEND')c.en=v;else if(k==='SUMMARY')c.s=v;else if(k==='LOCATION')c.l=v;else if(k==='DESCRIPTION')c.d=v}}return ev};
+const wk=d=>{const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x.getTime()};
+const p=s=>new Date(+s.slice(0,4),+s.slice(4,6)-1,+s.slice(6,8));
+const iso=d=>d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+const fmt=d=>d.getDate()+'.'+(d.getMonth()+1);
+const dn=d=>['Нд','Пн','Вт','Ср','Чт','Пт','Сб'][d.getDay()];
+const draw=()=>{const weeks=[...new Set(EV.map(e=>wk(p(e.dt))))].sort((a,b)=>a-b);
+if(!weeks.length){grid.innerHTML='Порожньо.';wl.textContent='';return}
+W=Math.max(0,Math.min(weeks.length-1,W));const w0=weeks[W];
+const days=[...Array(7)].map((_,i)=>new Date(w0+i*864e5));
+wl.textContent=fmt(days[0])+' — '+fmt(days[6]);
+grid.innerHTML=days.map(d=>{const k=iso(d);
+const es=EV.filter(e=>e.dt.slice(0,8)===k).sort((a,b)=>a.dt<b.dt?-1:1);
+return '<div class=wday><h3>'+dn(d)+' '+k.slice(6)+'.'+k.slice(4,6)+'</h3>'+(es.map(e=>'<div class=ev><b>'+e.dt.slice(9,11)+':'+e.dt.slice(11,13)+'–'+e.en.slice(9,11)+':'+e.en.slice(11,13)+'</b>'+e.s+(e.l?'<span> · ауд. '+e.l+'</span>':'')+(e.d?'<br><span>'+e.d+'</span>':'')+'</div>').join('')||'<span>—</span>')+'</div>'}).join('')};
+f.onchange=load;document.getElementById('pv').onclick=()=>{W--;draw()};document.getElementById('nx').onclick=()=>{W++;draw()};
+load();
+"""
+
+def render_view(files):
+    """Week-grid ICS viewer. File list baked in (static hosting has no directory listing)."""
+    import html
+    return ("<!doctype html><html lang='uk'><head><meta charset='utf-8'>"
+            "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+            "<title>Тиждень сіткою</title><style>" + _CSS + _VIEW_CSS + "</style></head><body><div class='wrap'>"
+            "<h1>Що там на тижні</h1>"
+            "<p class='sub'><a href='index.html'>← до груп</a></p>"
+            "<div class='row'><select id='f'>" + "".join(f"<option>{html.escape(x)}</option>" for x in files) + "</select>"
+            "<button class='btn tonal' id='pv'>←</button><span id='wl'></span><button class='btn tonal' id='nx'>→</button></div>"
+            "<div id='grid' class='week'></div>"
+            "<script>" + _VIEW_JS + "</script></div></body></html>")
 
 def render_index(pages):
     """One static page: pick your group, get its .ics link. No deps, no build step."""
@@ -243,9 +338,8 @@ def render_index(pages):
         return (
             f'<div class="card" data-g="{html.escape(label.lower())}" data-s="{html.escape(sheet.strip())}">'
             f'<span class="t">{html.escape(label)}</span><span class="row">'
-            f'<a class="btn fill" href="calendars/{html.escape(fname)}" data-dl="calendars/{html.escape(fname)}">Скачати (не оновиться)</a>'
-            f'<a class="btn tonal" href="#" data-sub="calendars/{html.escape(fname)}">Підписатись</a>'
-            f'<button class="btn out" data-copy="calendars/{html.escape(fname)}">Лінк</button>'
+            f'<a class="btn fill" href="#" data-gcal="calendars/{html.escape(fname)}">В Google-календар</a>'
+            f'<a class="btn tonal" href="#" data-sub="calendars/{html.escape(fname)}">Інший календар</a>'
             f'</span></div>')
     secs = "".join(
         f"<h2>{html.escape(s.strip())}</h2><div class='grid'>"
@@ -256,36 +350,29 @@ def render_index(pages):
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Розклад, який живе в календарі</title>
 <style>{_CSS}</style></head><body><div class="wrap">
-<div class="hero"><h1>Розклад для студентів робили люди,<br>яким начхати на студентів.</h1>
+<div class="hero"><h1>Нормальний розклад, <br>який живе у календарі</h1>
 <svg class="vine" viewBox="0 0 420 34" aria-hidden="true">
 <path d="M4 26 C 90 6, 180 30, 260 14 S 380 10, 416 20"/>
 <ellipse class="l1" cx="120" cy="14" rx="11" ry="5" transform="rotate(-24 120 14)"/>
 <ellipse class="l2" cx="250" cy="20" rx="11" ry="5" transform="rotate(18 250 20)"/>
 <ellipse class="l3" cx="350" cy="13" rx="11" ry="5" transform="rotate(-18 350 13)"/>
 </svg>
-<p class="sub">Цілий коледж, бюджет, наради — а на виході табличка, соромна навіть бабусі.
-Ми перетворили її на календар, що оновлюється сам. Забирай. Безкоштовно.</p>
+<p class="sub">Оновлюється сам, враховує заміни. Гудбай гугл табличка</p>
 <p class="fine"><b>Конфіденційність: нам начхати на твої дані.</b> У прямому сенсі.
-Ця сторінка нічого не збирає: ні імен, ні пошт, ні аналітики, ні кукі. Немає акаунтів,
-немає трекерів, немає сервера, з якого можна злити базу. Єдине, що відбувається, —
+Ця сторінка нічого не збирає. Немає акаунтів, трекерів або сервера, з якого можна злити базу. Єдине, що відбувається, —
 твій телефон качає статичний файл з парами. Параноїш — відкрий .ics блокнотом, там лише пари.</p>
 <p class="fine"><b>Умови: ми не всевидющі, а ти — дорослий.</b> Розклад береться
 з гугл-таблички коледжу, а отже, містить їхні помилки: перенесення, скасування, раптові
-«дивіться оновлення». Ми не сидимо на їхніх нарадах і фізично не знаємо про все, що відбувається.
+«дивіться оновлення». Ми не сидимо на їхніх нарадах (та й на пара нечасто) і фізично не знаємо про все, що відбувається.
 Перед важливими парами звіряйся з офіційним розкладом. Прогуляв пару, завалив сесію,
 відрахували — твої проблеми, не наші. Ми лише переклали табличку в календар.</p></div>
 <div class="search"><input id="q" placeholder="Знайди свою групу…" autocomplete="off"></div>
 <div class="chips">{"".join(chips)}</div>
 <div id="secs">{secs}</div>
-<dialog id="warn"><h3>Цей файл не оновиться</h3>
-<p>Скачаний .ics — труп: застиглий зліпок трьох тижнів, який протухне з першим же
-перенесенням пари. Тисни «Підписатись» — живий календар сам підтягує свіжий розклад.</p>
-<div class="row"><a class="btn fill" id="gosub" href="#">Підписатись</a>
-<a class="btn tonal" id="godl" href="#">Все одно скачати</a>
-<button class="btn out" id="nope">Закрити</button></div></dialog>
 <footer>Поливаємо кожні 6 годин — розклад сам росте з гугл-таблички.
 <br>Vibecoded in 2 hrs without a wage.
-<br>Останнє оновлення: {ts} (UTC).</footer>
+<br>Останнє оновлення: {ts} (UTC).
+<br><a href='view.html'>Тиждень сіткою</a></footer>
 <script>{_JS}</script></div></body></html>
 """
 
@@ -334,3 +421,6 @@ if __name__ == "__main__":
                 os.remove(f)
         open("index.html", "w", encoding="utf-8").write(render_index(pages))
         print(f"index.html ({len(pages)} groups)")
+        files = sorted({p[2] for p in pages})
+        open("view.html", "w", encoding="utf-8").write(render_view(files))
+        print(f"view.html ({len(files)} files)")
