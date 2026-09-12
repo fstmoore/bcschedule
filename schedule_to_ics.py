@@ -257,6 +257,13 @@ padding:18px;display:flex;flex-direction:column;gap:14px}
 .out{background:none;border:0;color:var(--mut);text-decoration:underline;
 text-underline-offset:3px;padding:9px 6px}
 :focus-visible{outline:2px solid var(--pollen);outline-offset:2px}
+dialog{border:1.5px solid var(--moss);border-radius:18px;background:var(--paper);color:var(--ink);
+padding:28px;max-width:min(440px,90vw)}
+dialog::backdrop{background:rgba(20,26,19,.45);backdrop-filter:blur(6px)}
+dialog h3{font-family:Fraunces,Georgia,serif;font-size:30px;margin:0 0 8px}
+dialog p{margin:0 0 16px}
+dialog input{flex:1;min-width:0;font:inherit;background:var(--card);color:var(--ink);
+border:1.5px solid var(--line);border-radius:12px;padding:8px}
 footer{margin-top:56px;color:var(--mut);font-size:15px}
 """
 
@@ -272,6 +279,11 @@ document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{document.querySelec
 const abs=p=>new URL(p,location.href).href;
 document.querySelectorAll('[data-gcal]').forEach(a=>a.href='https://calendar.google.com/calendar/r?cid='+encodeURIComponent(abs(a.dataset.gcal)));
 document.querySelectorAll('[data-sub]').forEach(a=>a.href=abs(a.dataset.sub).replace(/^https?/,'webcal'));
+const dlg=document.getElementById('how'),lk=document.getElementById('lk'),cp=document.getElementById('cp');
+document.querySelectorAll('[data-link]').forEach(b=>b.onclick=()=>{lk.value=abs(b.dataset.link);cp.textContent='Копіювати';dlg.showModal()});
+cp.onclick=()=>{(navigator.clipboard?navigator.clipboard.writeText(lk.value):Promise.reject()).then(()=>cp.textContent='Готово!',()=>lk.select())};
+document.getElementById('nope').onclick=()=>dlg.close();
+dlg.onclick=e=>{if(e.target===dlg)dlg.close()};
 """
 
 _VIEW_CSS = """
@@ -342,6 +354,7 @@ def render_index(pages):
             f'<span class="t">{html.escape(label)}</span><span class="row">'
             f'<a class="btn fill" href="#" data-gcal="calendars/{html.escape(fname)}">В Google-календар</a>'
             f'<a class="btn tonal" href="#" data-sub="calendars/{html.escape(fname)}">Інший календар</a>'
+            f'<button class="btn out" data-link="calendars/{html.escape(fname)}">Лінк</button>'
             f'</span></div>')
     secs = "".join(
         f"<h2>{html.escape(s.strip())}</h2><div class='grid'>"
@@ -378,6 +391,13 @@ def render_index(pages):
 <div class="search"><input id="q" placeholder="Знайди свою групу…" autocomplete="off"></div>
 <div class="chips">{"".join(chips)}</div>
 <div id="secs">{secs}</div>
+<dialog id="how"><h3>Як додати розклад</h3>
+<p>Найпростіше — кнопки вище: «В Google-календар» або «Інший календар».
+А якщо треба вручну — ось лінк:</p>
+<div class="row"><input id="lk" readonly><button class="btn fill" id="cp">Копіювати</button>
+<button class="btn out" id="nope">Закрити</button></div>
+<p>iPhone: Параметри → Календар → Облікові записи → Додати передплачений календар.
+Google: Календар → Інші календарі → Додати за URL. Android: тільки через Google.</p></dialog>
 <footer>Поливаємо кожні 6 годин — розклад сам росте з гугл-таблички.
 <br>Vibecoded in 2 hrs without a wage.
 <br>Останнє оновлення: {ts} (UTC).
