@@ -366,6 +366,7 @@ def render_index(pages):
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Розклад, який живе в календарі</title>
 <meta name="description" content="Розклад занять ЧДБК — Черкаського державного фахового бізнес-коледжу (ЧДФБК) — у вигляді календаря: обери групу, додай у Google-календар або будь-який інший. Оновлюється кожні 6 годин. Неофіційний проєкт, не афілійований з коледжем.">
+<meta name="keywords" content="розклад, ЧДБК, ЧДФБК, Черкаський державний фаховий бізнес-коледж, розклад занять, календар, групи, пари">
 <meta name="theme-color" content="#edf2e6">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Нормальний розклад, який живе у календарі">
