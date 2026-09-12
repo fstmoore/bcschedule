@@ -365,7 +365,7 @@ def render_index(pages):
     return f"""<!doctype html><html lang="uk"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Розклад, який живе в календарі</title>
-<meta name="description" content="Розклад занять ЧДБК — Черкаського державного фахового бізнес-коледжу (ЧДФБК) — у вигляді календаря: обери групу, додай у Google-календар або будь-який інший. Оновлюється кожні 6 годин.">
+<meta name="description" content="Розклад занять ЧДБК — Черкаського державного фахового бізнес-коледжу (ЧДФБК) — у вигляді календаря: обери групу, додай у Google-календар або будь-який інший. Оновлюється кожні 6 годин. Неофіційний проєкт, не афілійований з коледжем.">
 <meta name="theme-color" content="#edf2e6">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Нормальний розклад, який живе у календарі">
@@ -404,7 +404,8 @@ Google: Календар → Інші календарі → Додати за U
 <br>Vibecoded in 2 hrs without a wage.
 <br>Останнє оновлення: {ts} (UTC).
 <br><a href='view.html'>Тиждень сіткою</a>
-<br>Розклад ЧДБК — Черкаський державний фаховий бізнес-коледж (ЧДФБК).</footer>
+<br>Розклад ЧДБК — Черкаський державний фаховий бізнес-коледж (ЧДФБК).
+<br>Неофіційний проєкт, не афілійований з коледжем.</footer>
 <script>{_JS}</script></div></body></html>
 """
 
