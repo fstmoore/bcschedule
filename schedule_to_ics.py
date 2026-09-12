@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Sheet -> ICS. Stdlib only. Usage: python3 schedule_to_ics.py --group 1Д-22 --start 2026-09-14 --weeks 4 -o out.ics"""
-import argparse, io, os, re, urllib.request, uuid, datetime, zipfile
+import argparse, glob, io, os, re, urllib.request, uuid, datetime, zipfile
 import xml.etree.ElementTree as ET
 
-SHEET_ID = "1Unjt41yf9enuB2jou2P-2-vgyJoDXZ2k"
+SHEET_ID = "1SXdz3k3Ect865_IIL3vm-Ia1LvNhK3ls"
 NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 REL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 
@@ -200,6 +200,11 @@ padding:18px;display:flex;flex-direction:column;gap:14px}
 .out{background:none;border:0;color:var(--mut);text-decoration:underline;
 text-underline-offset:3px;padding:9px 6px}
 :focus-visible{outline:2px solid var(--pollen);outline-offset:2px}
+dialog{border:1.5px solid var(--moss);border-radius:18px;background:var(--paper);color:var(--ink);
+padding:28px;max-width:min(440px,90vw)}
+dialog::backdrop{background:rgba(20,26,19,.45);backdrop-filter:blur(6px)}
+dialog h3{font-family:Fraunces,Georgia,serif;font-size:30px;margin:0 0 8px}
+dialog p{margin:0 0 16px}
 footer{margin-top:56px;color:var(--mut);font-size:15px}
 """
 
@@ -216,6 +221,11 @@ const abs=p=>new URL(p,location.href).href;
 document.querySelectorAll('[data-sub]').forEach(a=>a.href=abs(a.dataset.sub).replace(/^https?/,'webcal'));
 document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>{const u=abs(b.dataset.copy);
 (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>b.textContent='Готово!',()=>prompt('Тримай лінк:',u))});
+const dlg=document.getElementById('warn'),gosub=document.getElementById('gosub'),godl=document.getElementById('godl');
+document.querySelectorAll('[data-dl]').forEach(a=>a.onclick=e=>{e.preventDefault();
+godl.href=a.dataset.dl;gosub.href=abs(a.dataset.dl).replace(/^https?/,'webcal');dlg.showModal()});
+document.getElementById('nope').onclick=()=>dlg.close();
+dlg.onclick=e=>{if(e.target===dlg)dlg.close()};
 """
 
 def render_index(pages):
@@ -233,7 +243,7 @@ def render_index(pages):
         return (
             f'<div class="card" data-g="{html.escape(label.lower())}" data-s="{html.escape(sheet.strip())}">'
             f'<span class="t">{html.escape(label)}</span><span class="row">'
-            f'<a class="btn fill" href="calendars/{html.escape(fname)}">Скачати</a>'
+            f'<a class="btn fill" href="calendars/{html.escape(fname)}" data-dl="calendars/{html.escape(fname)}">Скачати (не оновиться)</a>'
             f'<a class="btn tonal" href="#" data-sub="calendars/{html.escape(fname)}">Підписатись</a>'
             f'<button class="btn out" data-copy="calendars/{html.escape(fname)}">Лінк</button>'
             f'</span></div>')
@@ -241,6 +251,7 @@ def render_index(pages):
         f"<h2>{html.escape(s.strip())}</h2><div class='grid'>"
         + "".join(card(s, label, fname) for label, fname in items) + "</div>"
         for s, items in sheets)
+    ts = datetime.datetime.now(datetime.timezone.utc).strftime("%d.%m.%Y %H:%M")
     return f"""<!doctype html><html lang="uk"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Розклад, який живе в календарі</title>
@@ -266,8 +277,15 @@ def render_index(pages):
 <div class="search"><input id="q" placeholder="Знайди свою групу…" autocomplete="off"></div>
 <div class="chips">{"".join(chips)}</div>
 <div id="secs">{secs}</div>
+<dialog id="warn"><h3>Цей файл не оновиться</h3>
+<p>Скачаний .ics — труп: застиглий зліпок трьох тижнів, який протухне з першим же
+перенесенням пари. Тисни «Підписатись» — живий календар сам підтягує свіжий розклад.</p>
+<div class="row"><a class="btn fill" id="gosub" href="#">Підписатись</a>
+<a class="btn tonal" id="godl" href="#">Все одно скачати</a>
+<button class="btn out" id="nope">Закрити</button></div></dialog>
 <footer>Поливаємо кожні 6 годин — розклад сам росте з гугл-таблички.
-<br>Vibecoded in 2 hrs without a wage.</footer>
+<br>Vibecoded in 2 hrs without a wage.
+<br>Останнє оновлення: {ts} (UTC).</footer>
 <script>{_JS}</script></div></body></html>
 """
 
@@ -309,5 +327,10 @@ if __name__ == "__main__":
             if a.group == "all":
                 pages.append((sheet, f"{g}-{sub}" if sub else g, os.path.basename(out)))
     if a.group == "all":
+        # ponytail: drop stale files (e.g. graduated groups) so dead links never linger
+        keep = {os.path.basename(p[2]) for p in pages}
+        for f in glob.glob(os.path.join("calendars", "*.ics")):
+            if os.path.basename(f) not in keep:
+                os.remove(f)
         open("index.html", "w", encoding="utf-8").write(render_index(pages))
         print(f"index.html ({len(pages)} groups)")
