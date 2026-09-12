@@ -315,7 +315,9 @@ def render_view(files):
     import html
     return ("<!doctype html><html lang='uk'><head><meta charset='utf-8'>"
             "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-            "<title>Тиждень сіткою</title><style>" + _CSS + _VIEW_CSS + "</style></head><body><div class='wrap'>"
+            "<title>Тиждень сіткою</title>"
+            "<script data-goatcounter='https://bcschedule.goatcounter.com/count' async src='//gc.zgo.at/count.js'></script>"
+            "<style>" + _CSS + _VIEW_CSS + "</style></head><body><div class='wrap'>"
             "<h1>Що там на тижні</h1>"
             "<p class='sub'><a href='index.html'>← до груп</a></p>"
             "<div class='row'><select id='f'>" + "".join(f"<option>{html.escape(x)}</option>" for x in files) + "</select>"
@@ -349,6 +351,12 @@ def render_index(pages):
     return f"""<!doctype html><html lang="uk"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Розклад, який живе в календарі</title>
+<meta name="description" content="Розклад занять ЧДБК — Черкаського державного фахового бізнес-коледжу (ЧДФБК) — у вигляді календаря: обери групу, додай у Google-календар або будь-який інший. Оновлюється кожні 6 годин.">
+<meta name="theme-color" content="#edf2e6">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Нормальний розклад, який живе у календарі">
+<meta property="og:description" content="Обирай групу — пари самі прийдуть у твій календар. Без гугл-таблички.">
+<script data-goatcounter="https://bcschedule.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 <style>{_CSS}</style></head><body><div class="wrap">
 <div class="hero"><h1>Нормальний розклад, <br>який живе у календарі</h1>
 <svg class="vine" viewBox="0 0 420 34" aria-hidden="true">
@@ -359,7 +367,8 @@ def render_index(pages):
 </svg>
 <p class="sub">Оновлюється сам, враховує заміни. Гудбай гугл табличка</p>
 <p class="fine"><b>Конфіденційність: нам начхати на твої дані.</b> У прямому сенсі.
-Ця сторінка нічого не збирає. Немає акаунтів, трекерів або сервера, з якого можна злити базу. Єдине, що відбувається, —
+Ця сторінка майже нічого не збирає: один безкуковий лічильник переглядів (GoatCounter) —
+без імен, пошт та ідентифікаторів. Немає акаунтів, трекерів або сервера, з якого можна злити базу. Єдине, що відбувається, —
 твій телефон качає статичний файл з парами. Параноїш — відкрий .ics блокнотом, там лише пари.</p>
 <p class="fine"><b>Умови: ми не всевидющі, а ти — дорослий.</b> Розклад береться
 з гугл-таблички коледжу, а отже, містить їхні помилки: перенесення, скасування, раптові
@@ -372,7 +381,8 @@ def render_index(pages):
 <footer>Поливаємо кожні 6 годин — розклад сам росте з гугл-таблички.
 <br>Vibecoded in 2 hrs without a wage.
 <br>Останнє оновлення: {ts} (UTC).
-<br><a href='view.html'>Тиждень сіткою</a></footer>
+<br><a href='view.html'>Тиждень сіткою</a>
+<br>Розклад ЧДБК — Черкаський державний фаховий бізнес-коледж (ЧДФБК).</footer>
 <script>{_JS}</script></div></body></html>
 """
 
