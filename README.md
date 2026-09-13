@@ -1,8 +1,36 @@
 # bcschedule
-Generating .ics schedules from a Google doc - live at https://fstmoore.github.io/bcschedule/
 
-# Motivation
-Google docs are great for collaborating, but are terrible for information that can changes rapidly. They update without any notification and can be terrible when quickly seeking important info. Thererefore, this thing. Features:
-- Google doc timetable -> .ics in your calendar app
-- Auto-updates every 6h using github actions
-- technically serverless?
+College timetable from a Google Sheet, living in your calendar.
+Live at https://fstmoore.github.io/bcschedule/
+
+## Motivation
+
+Google Docs are great for collaborating, but terrible for information that changes
+rapidly: silent edits, no notifications, and good luck finding anything in a hurry
+on your phone. Therefore, this thing:
+
+- Google Sheet timetable → `.ics` in your calendar app
+- Auto-updates every 6 hours via GitHub Actions
+- Technically serverless (static files plus a cron job)
+
+## Use
+
+Pick your group on the [site](https://fstmoore.github.io/bcschedule/) and subscribe:
+Google Calendar or any `webcal` client. Clicking a card shows a week preview.
+
+## Run it yourself
+
+```sh
+python3 schedule_to_ics.py --group all --weeks 3   # everything
+python3 schedule_to_ics.py --group 1КІ-25 --weeks 4 -o out.ics
+```
+
+Stdlib only, no dependencies. `--flip-weeks` swaps чисельник/знаменник if the
+college starts the semester on the other foot.
+
+## Layout
+
+- `schedule_to_ics.py` — fetcher, parser, `.ics` writer, page generator
+- `index.html` — generated, do not edit by hand
+- `calendars/` — generated per-group files
+- `.github/workflows/schedule.yml` — the 6-hour regen

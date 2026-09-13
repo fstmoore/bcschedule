@@ -230,14 +230,21 @@ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/sv
 .hero{padding:40px 0 12px}.hero h1{font-family:Fraunces,Georgia,serif;
 font-size:clamp(40px,7vw,72px);line-height:1.02;font-weight:600;letter-spacing:-.01em;margin:0}
 .hero .sub{font-size:19px;max-width:58ch;color:var(--mut)}
-.vine{display:block;width:min(420px,80%);height:34px;margin-top:6px}
-.vine path{fill:none;stroke:var(--fern);stroke-width:3;stroke-linecap:round;
-stroke-dasharray:600;stroke-dashoffset:600;animation:grow 1.6s ease-out .3s forwards}
-.vine ellipse{fill:var(--fern);opacity:0;animation:leaf .5s ease-out forwards}
-.vine .l1{animation-delay:1s}.vine .l2{animation-delay:1.3s}.vine .l3{animation-delay:1.5s}
-@keyframes grow{to{stroke-dashoffset:0}}
-@keyframes leaf{to{opacity:1}}
-@media(prefers-reduced-motion:reduce){.vine path{animation:none;stroke-dashoffset:0}.vine ellipse{opacity:1;animation:none}}
+.vine{display:block;width:min(420px,80%);height:34px;margin-top:6px;
+opacity:0;transform-origin:left center;animation:vinein 1s ease-out .2s forwards}
+.vine path{fill:none;stroke:var(--fern);stroke-width:3;stroke-linecap:round}
+.vine ellipse{fill:var(--fern);opacity:0;transform-box:fill-box;transform-origin:center;
+transform:scale(0);animation:leaf .45s ease-out forwards}
+.vine .l1{animation-delay:.7s}.vine .l2{animation-delay:1s}.vine .l3{animation-delay:1.2s}
+@keyframes vinein{from{opacity:0;transform:scaleX(.6)}to{opacity:1;transform:none}}
+@keyframes leaf{to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;opacity:1!important;transform:none!important}}
+@keyframes cardin{from{opacity:0;transform:translateY(10px)}}
+@keyframes pop{from{opacity:0;transform:scale(.97) translateY(8px)}}
+@keyframes evin{from{opacity:0;transform:translateY(6px)}}
+.card{animation:cardin .4s ease-out backwards}
+dialog[open]{animation:pop .18s ease-out}
+.tev{animation:evin .25s ease-out backwards}
 .search{display:flex;background:var(--card);border:1.5px solid var(--line);
 border-radius:999px;padding:12px 22px;margin:26px 0 14px}
 .search:focus-within{border-color:var(--moss)}
@@ -265,7 +272,34 @@ dialog h3{font-family:Fraunces,Georgia,serif;font-size:30px;margin:0 0 8px}
 dialog p{margin:0 0 16px}
 dialog input{flex:1;min-width:0;font:inherit;background:var(--card);color:var(--ink);
 border:1.5px solid var(--line);border-radius:12px;padding:8px}
+#pvw{width:min(920px,94vw);max-width:94vw}
 footer{margin-top:56px;color:var(--mut);font-size:15px}
+.week{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:16px}
+.wday{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px}
+.wday h3{margin:0 0 8px;font-size:14px;color:var(--moss)}
+.ev{border-left:3px solid var(--fern);padding:4px 6px;margin:0 0 8px;font-size:13px}
+.ev b{display:block}.ev span{color:var(--mut)}
+.card{cursor:pointer}
+.tg-head{display:grid;grid-template-columns:repeat(5,1fr);margin-left:44px;text-align:center;
+color:var(--mut);font-size:12px}
+.tg-head b{display:block;font-size:24px;font-weight:400;color:var(--ink)}
+.tg-body{overflow-y:auto;max-height:62vh;border-top:1px solid var(--line);margin-top:4px}
+.tg-in{position:relative;margin-left:44px}
+.tg-line{position:absolute;left:0;right:0;border-top:1px solid var(--line)}
+.tg-h{position:absolute;left:-44px;width:36px;text-align:right;font-size:11px;color:var(--mut);transform:translateY(-50%)}
+.tg-cols{position:absolute;inset:0;display:grid;grid-template-columns:repeat(5,1fr)}
+.tg-col{position:relative;border-left:1px solid var(--line)}
+.tev{position:absolute;left:2px;right:2px;background:var(--card);color:var(--ink);
+border:1.5px solid var(--moss);border-left:3px solid var(--fern);border-radius:12px;
+padding:3px 6px;font-size:12px;line-height:1.35;overflow:hidden}
+.tev b{display:block;font-weight:600}.tev span{color:var(--mut)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--fern);border-radius:8px}
+::-webkit-scrollbar-track{background:transparent}
+*{scrollbar-width:thin;scrollbar-color:var(--fern) transparent}
+.tg-tabs{display:none;gap:8px;margin:8px 0 4px;flex-wrap:wrap}
+@media(max-width:640px){.tg-tabs{display:flex}.tg-head{display:none}.tg-cols{grid-template-columns:1fr}
+.tg-col{display:none}.tg-col.on{display:block}dialog{padding:16px}.tg-body{max-height:70vh}}
 """
 
 _JS = """
@@ -281,62 +315,46 @@ const abs=p=>new URL(p,location.href).href;
 document.querySelectorAll('[data-gcal]').forEach(a=>a.href='https://calendar.google.com/calendar/r?cid='+encodeURIComponent(abs(a.dataset.gcal)));
 document.querySelectorAll('[data-sub]').forEach(a=>a.href=abs(a.dataset.sub).replace(/^https?/,'webcal'));
 const dlg=document.getElementById('how'),lk=document.getElementById('lk'),cp=document.getElementById('cp');
-document.querySelectorAll('[data-link]').forEach(b=>b.onclick=()=>{lk.value=abs(b.dataset.link);cp.textContent='Копіювати';dlg.showModal()});
+document.querySelectorAll('[data-link]').forEach(b=>b.onclick=()=>{lk.value=abs(b.dataset.link);cp.textContent='Копіювати';lock();dlg.showModal()});
 cp.onclick=()=>{(navigator.clipboard?navigator.clipboard.writeText(lk.value):Promise.reject()).then(()=>cp.textContent='Готово!',()=>lk.select())};
 document.getElementById('nope').onclick=()=>dlg.close();
 dlg.onclick=e=>{if(e.target===dlg)dlg.close()};
+const lock=()=>document.body.style.overflow='hidden',unlock=()=>document.body.style.overflow='';
+const pvw=document.getElementById('pvw'),pgrid=document.getElementById('pgrid'),pname=document.getElementById('pname');
+const pch=document.getElementById('pch'),pzn=document.getElementById('pzn');
+const iw=d=>{const x=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=(x.getUTCDay()+6)%7;x.setUTCDate(x.getUTCDate()-day+3);const f=new Date(Date.UTC(x.getUTCFullYear(),0,4));return 1+Math.round((x-f)/6048e5)};
+const wd=s=>{const d=new Date(+s.slice(0,4),+s.slice(4,6)-1,+s.slice(6,8));return (d.getDay()+6)%7};
+let PAR=0,PEV=[],PDI=((w)=>(w>4?0:w))((new Date().getDay()+6)%7);
+const drawPv=()=>{const DD=['ПН','ВТ','СР','ЧТ','ПТ'],T0=480,T1=1320,HR=46;
+if(!PEV.length){pgrid.innerHTML='<p class="sub">Порожньо: файл розкладу не завантажився або не розібрався.</p>';return}
+const mm=s=>+s.slice(9,11)*60+ +s.slice(11,13),T2=m=>Math.floor(m/60)+':'+String(m%60).padStart(2,'0');
+const ev=PEV.filter(x=>PAR?!((x.s||'').includes('(чис.)')):!((x.s||'').includes('(знам.)')));
+let h='<div class=tg-tabs>'+DD.map((d,i)=>'<button class="chip'+(i===PDI?' on':'')+'" data-d="'+i+'">'+d+'</button>').join('')+'</div>';
+h+='<div class=tg-head>'+DD.map(d=>'<div>'+d+'</div>').join('')+'</div>';
+h+='<div class=tg-body><div class=tg-in style="height:'+((T1-T0)/60*HR)+'px">';
+for(let m=T0;m<=T1;m+=60)h+='<div class=tg-line style="top:'+(m-T0)/60*HR+'px"></div><div class=tg-h style="top:'+(m-T0)/60*HR+'px">'+T2(m)+'</div>';
+h+='<div class=tg-cols>'+[0,1,2,3,4].map(i=>{const es=ev.filter(x=>wd(x.dt)===i).sort((a,b)=>a.dt<b.dt?-1:1);
+return '<div class="tg-col'+(i===PDI?' on':'')+'">'+es.map(x=>{const a=mm(x.dt),b=mm(x.en);
+return '<div class=tev style="top:'+(a-T0)/60*HR+'px;height:'+Math.max(20,(b-a)/60*HR-3)+'px"><b>'+x.s+'</b><span>'+T2(a)+'–'+T2(b)+(x.l?' · '+x.l:'')+'</span></div>'}).join('')+'</div>'}).join('')+'</div></div></div>';
+pgrid.innerHTML=h;
+pgrid.querySelectorAll('.tg-tabs .chip').forEach(b=>b.onclick=()=>{PDI=+b.dataset.d;drawPv()})};
+const setPar=v=>{PAR=v;pch.classList.toggle('on',!v);pzn.classList.toggle('on',!!v);drawPv()};
+pch.onclick=()=>setPar(0);pzn.onclick=()=>setPar(1);
+document.querySelectorAll('.card').forEach(c=>c.onclick=e=>{if(e.target.closest('a,button'))return;
+pname.textContent=c.querySelector('.t').textContent;
+fetch(c.querySelector('[data-gcal]').dataset.gcal,{cache:'reload'}).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{PEV=parse(t);setPar(iw(new Date())%2?1:0);drawPv();lock();pvw.showModal()}).catch(()=>{PEV=[];pname.textContent=c.querySelector('.t').textContent;drawPv();lock();pvw.showModal()})});
+document.getElementById('pclose').onclick=()=>pvw.close();
+pvw.onclick=e=>{if(e.target===pvw)pvw.close()};
+dlg.addEventListener('close',unlock);pvw.addEventListener('close',unlock);
 """
 
-_VIEW_CSS = """
-.week{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:16px}
-.wday{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px}
-.wday h3{margin:0 0 8px;font-size:14px;color:var(--moss)}
-.ev{border-left:3px solid var(--fern);padding:4px 6px;margin:0 0 8px;font-size:13px}
-.ev b{display:block}.ev span{color:var(--mut)}
-select{font:inherit;background:var(--card);color:var(--ink);border:1.5px solid var(--moss);border-radius:12px;padding:8px;max-width:100%}
-#wl{min-width:110px;text-align:center;color:var(--mut)}
-"""
-
-_VIEW_JS = """
-let W=0,EV=[];
-const f=document.getElementById('f'),grid=document.getElementById('grid'),wl=document.getElementById('wl');
-const load=()=>fetch('calendars/'+encodeURIComponent(f.value)).then(r=>r.text()).then(t=>{EV=parse(t);W=0;draw()});
+_PARSE_JS = """
 const parse=t=>{t=t.replace(/\\r\\n[ \\t]/g,'');const ev=[];let c={};
 for(const l of t.split(/\\r\\n|\\n/)){const i=l.indexOf(':');
 if(l==='BEGIN:VEVENT')c={};else if(l==='END:VEVENT'){if(c.dt)ev.push(c);c={}}
 else if(i>0){const k=l.slice(0,i),v=l.slice(i+1);
 if(k==='DTSTART')c.dt=v;else if(k==='DTEND')c.en=v;else if(k==='SUMMARY')c.s=v;else if(k==='LOCATION')c.l=v;else if(k==='DESCRIPTION')c.d=v}}return ev};
-const wk=d=>{const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x.getTime()};
-const p=s=>new Date(+s.slice(0,4),+s.slice(4,6)-1,+s.slice(6,8));
-const iso=d=>d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
-const fmt=d=>d.getDate()+'.'+(d.getMonth()+1);
-const dn=d=>['Нд','Пн','Вт','Ср','Чт','Пт','Сб'][d.getDay()];
-const draw=()=>{const weeks=[...new Set(EV.map(e=>wk(p(e.dt))))].sort((a,b)=>a-b);
-if(!weeks.length){grid.innerHTML='Порожньо.';wl.textContent='';return}
-W=Math.max(0,Math.min(weeks.length-1,W));const w0=weeks[W];
-const days=[...Array(7)].map((_,i)=>new Date(w0+i*864e5));
-wl.textContent=fmt(days[0])+' — '+fmt(days[6]);
-grid.innerHTML=days.map(d=>{const k=iso(d);
-const es=EV.filter(e=>e.dt.slice(0,8)===k).sort((a,b)=>a.dt<b.dt?-1:1);
-return '<div class=wday><h3>'+dn(d)+' '+k.slice(6)+'.'+k.slice(4,6)+'</h3>'+(es.map(e=>'<div class=ev><b>'+e.dt.slice(9,11)+':'+e.dt.slice(11,13)+'–'+e.en.slice(9,11)+':'+e.en.slice(11,13)+'</b>'+e.s+(e.l?'<span> · ауд. '+e.l+'</span>':'')+(e.d?'<br><span>'+e.d+'</span>':'')+'</div>').join('')||'<span>—</span>')+'</div>'}).join('')};
-f.onchange=load;document.getElementById('pv').onclick=()=>{W--;draw()};document.getElementById('nx').onclick=()=>{W++;draw()};
-load();
 """
-
-def render_view(files):
-    """Week-grid ICS viewer. File list baked in (static hosting has no directory listing)."""
-    import html
-    return ("<!doctype html><html lang='uk'><head><meta charset='utf-8'>"
-            "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-            "<title>Тиждень сіткою</title>"
-            "<script data-goatcounter='https://bcschedule.goatcounter.com/count' async src='//gc.zgo.at/count.js'></script>"
-            "<style>" + _CSS + _VIEW_CSS + "</style></head><body><div class='wrap'>"
-            "<h1>Що там на тижні</h1>"
-            "<p class='sub'><a href='index.html'>← до груп</a></p>"
-            "<div class='row'><select id='f'>" + "".join(f"<option>{html.escape(x)}</option>" for x in files) + "</select>"
-            "<button class='btn tonal' id='pv'>←</button><span id='wl'></span><button class='btn tonal' id='nx'>→</button></div>"
-            "<div id='grid' class='week'></div>"
-            "<script>" + _VIEW_JS + "</script></div></body></html>")
 
 def render_index(pages):
     """One static page: pick your group, get its .ics link. No deps, no build step."""
@@ -349,9 +367,9 @@ def render_index(pages):
     chips = ['<button class="chip on" data-s="">Усі</button>'] + [
         f'<button class="chip" data-s="{html.escape(s.strip())}">{html.escape(s.strip())}</button>'
         for s, _ in sheets]
-    def card(sheet, label, fname):
+    def card(sheet, label, fname, i):
         return (
-            f'<div class="card" data-g="{html.escape(label.lower())}" data-s="{html.escape(sheet.strip())}">'
+            f'<div class="card" style="animation-delay:{min(i * 20, 400)}ms" data-g="{html.escape(label.lower())}" data-s="{html.escape(sheet.strip())}">'
             f'<span class="t">{html.escape(label)}</span><span class="row">'
             f'<a class="btn fill" href="#" data-gcal="calendars/{html.escape(fname)}">В Google-календар</a>'
             f'<a class="btn tonal" href="#" data-sub="calendars/{html.escape(fname)}">Інший календар</a>'
@@ -359,12 +377,13 @@ def render_index(pages):
             f'</span></div>')
     secs = "".join(
         f"<h2>{html.escape(s.strip())}</h2><div class='grid'>"
-        + "".join(card(s, label, fname) for label, fname in items) + "</div>"
+        + "".join(card(s, label, fname, i) for i, (label, fname) in enumerate(items)) + "</div>"
         for s, items in sheets)
     ts = datetime.datetime.now(datetime.timezone.utc).strftime("%d.%m.%Y %H:%M")
     return f"""<!doctype html><html lang="uk"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Розклад, який живе в календарі</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta name="description" content="Розклад занять ЧДБК — Черкаського державного фахового бізнес-коледжу (ЧДФБК) — у вигляді календаря: обери групу, додай у Google-календар або будь-який інший. Оновлюється кожні 6 годин. Неофіційний проєкт, не афілійований з коледжем.">
 <meta name="keywords" content="розклад, ЧДБК, ЧДФБК, Черкаський державний фаховий бізнес-коледж, розклад занять, календар, групи, пари">
 <meta name="theme-color" content="#edf2e6">
@@ -401,13 +420,16 @@ def render_index(pages):
 <button class="btn out" id="nope">Закрити</button></div>
 <p>iPhone: Параметри → Календар → Облікові записи → Додати передплачений календар.
 Google: Календар → Інші календарі → Додати за URL. Android: тільки через Google.</p></dialog>
+<dialog id="pvw"><h3 id="pname"></h3>
+<div class="chips"><button class="chip" id="pch">Чисельник</button><button class="chip" id="pzn">Знаменник</button></div>
+<div id="pgrid"></div>
+<div class="row"><button class="btn out" id="pclose">Закрити</button></div></dialog>
 <footer>Поливаємо кожні 6 годин — розклад сам росте з гугл-таблички.
 <br>Vibecoded in 2 hrs without a wage.
 <br>Останнє оновлення: {ts} (UTC).
-<br><a href='view.html'>Тиждень сіткою</a>
 <br>Розклад ЧДБК — Черкаський державний фаховий бізнес-коледж (ЧДФБК).
 <br>Неофіційний проєкт, не афілійований з коледжем.</footer>
-<script>{_JS}</script></div></body></html>
+<script>{_PARSE_JS}{_JS}</script></div></body></html>
 """
 
 if __name__ == "__main__":
@@ -455,11 +477,9 @@ if __name__ == "__main__":
                 os.remove(f)
         open("index.html", "w", encoding="utf-8").write(render_index(pages))
         print(f"index.html ({len(pages)} groups)")
-        files = sorted({p[2] for p in pages})
-        open("view.html", "w", encoding="utf-8").write(render_view(files))
-        print(f"view.html ({len(files)} files)")
         today = datetime.date.today().isoformat()
-        urls = ["", "view.html"] + [f"calendars/{f}" for f in files]
+        files = sorted({p[2] for p in pages})
+        urls = [""] + [f"calendars/{f}" for f in files]
         sm = ['<?xml version="1.0" encoding="UTF-8"?>',
               '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'] + [
               f"<url><loc>{BASE}/{u}</loc><lastmod>{today}</lastmod></url>" for u in urls
