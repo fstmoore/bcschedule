@@ -1,7 +1,7 @@
 # bcschedule
 
 College timetable from a Google Sheet, living in your calendar.
-Live at https://fstmoore.github.io/bcschedule/
+Live at http://schdl.eu.cc/
 
 ## Motivation
 
@@ -15,7 +15,7 @@ on your phone. Therefore, this thing:
 
 ## Use
 
-Pick your group on the [site](https://fstmoore.github.io/bcschedule/) and subscribe:
+Pick your group on the [site](http://schdl.eu.cc/) and subscribe:
 Google Calendar or any `webcal` client. Clicking a card shows a week preview.
 
 ## Run it yourself
