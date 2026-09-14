@@ -4,7 +4,7 @@ import argparse, glob, io, os, re, urllib.request, uuid, datetime, zipfile
 import xml.etree.ElementTree as ET
 
 SHEET_ID = "1SXdz3k3Ect865_IIL3vm-Ia1LvNhK3ls"
-BASE = "https://fstmoore.github.io/bcschedule"
+BASE = "https://schdl.eu.cc"
 NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 REL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 

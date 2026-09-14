@@ -20,4 +20,4 @@ Allow: /
 User-agent: Bytespider
 Allow: /
 
-Sitemap: https://fstmoore.github.io/bcschedule/sitemap.xml
+Sitemap: https://schdl.eu.cc/sitemap.xml
