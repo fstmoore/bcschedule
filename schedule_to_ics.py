@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Sheet -> ICS. Stdlib only. Usage: python3 schedule_to_ics.py --group 1Д-22 --start 2026-09-14 --weeks 4 -o out.ics"""
-import argparse, glob, io, os, re, urllib.request, uuid, datetime, zipfile
+import argparse, glob, html, io, os, re, urllib.request, uuid, datetime, zipfile
 import xml.etree.ElementTree as ET
 
 SHEET_ID = "1SXdz3k3Ect865_IIL3vm-Ia1LvNhK3ls"
+MOODLE_URL = "http://78.137.2.119:2929/mod/forum/discuss.php?d=45"
 BASE = "https://schdl.eu.cc"
 NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 REL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
@@ -65,6 +66,75 @@ def fetch_sheets(sheet_id=SHEET_ID):
         path = "xl/" + rels[s.get(REL + "id")].split("xl/")[-1]
         out.append((s.get("name"), _sheet_grid(z, path, shared)))
     return out
+
+def _ngrp(g):
+    return re.sub(r"[\s\-–—]+", "", g).upper()
+
+def _cell_lines(cell):
+    lines = []
+    for p in re.split(r"<br[^>]*>|<p[^>]*>|</p>", cell):
+        t = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", p))).strip()
+        if t:
+            lines.append(t)
+    return lines
+
+def fetch_replacements(moodle=MOODLE_URL):
+    """Moodle post -> google doc IDs -> {(date, GROUP, pair): (subject, teacher, room, cancelled)}. Never raises."""
+    try:
+        page = urllib.request.urlopen(moodle, timeout=30).read().decode("utf-8", "replace")
+        ids = list(dict.fromkeys(re.findall(r"docs\.google\.com/document/d/([\w\-]+)", page)))
+        out = {}
+        for doc in ids:
+            raw = urllib.request.urlopen(
+                f"https://docs.google.com/document/d/{doc}/export?format=html", timeout=60).read().decode("utf-8", "replace")
+            tables = re.findall(r"<table.*?</table>", raw, re.S)
+            dates = [f"{y}-{m}-{d}" for d, m, y in re.findall(r"(\d{2})\.(\d{2})\.(\d{4})", raw)]
+            for i, t in enumerate(tables):
+                if i >= len(dates):
+                    break
+                for r in re.findall(r"<tr.*?</tr>", t, re.S)[1:]:  # skip header
+                    cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", r, re.S)
+                    if len(cells) < 5:
+                        continue
+                    cls = [_cell_lines(c) for c in cells[:5]]
+                    groups = [p for ln in cls[0] for p in re.split(r"[,;\s]+", ln) if p]
+                    pairs = [int(x) for x in re.findall(r"\d+", " ".join(cls[1]))]
+                    subj = " / ".join(cls[2])
+                    if not groups or not pairs or not subj or "за розкладом" in subj.lower():
+                        continue
+                    teach, room = ", ".join(cls[3]), ", ".join(cls[4])
+                    # ponytail: multi-group rows join teachers/rooms; per-group mapping when college publishes it
+                    for g in groups:
+                        for p in pairs:
+                            out[(dates[i], _ngrp(g), p)] = (subj, teach, room, "відмін" in subj.lower())
+        return out
+    except Exception:
+        return {}  # ponytail: regen without replacements beats no regen; alert when this happens often
+
+def apply_replacements(ics, file_group, repl):
+    """Replace/cancel/add bell slots per replacements. Bell N = TIMES[N], absolute dates."""
+    fg = _ngrp(file_group)
+    mine = [((d, p), v) for (d, gn, p), v in repl.items()
+            if p in TIMES and (fg == gn or fg.startswith(gn) or gn.startswith(fg))]
+    if not mine:
+        return ics
+    body, tail = ics.rsplit("END:VCALENDAR", 1)
+    head, *events = body.split("BEGIN:VEVENT")
+    drop = {f"DTSTART:{d.replace('-', '')}T{TIMES[p][0].replace(':', '')}00" for (d, p), _ in mine}
+    out = [head + "BEGIN:VEVENT" + e for e in events if not any(x in e for x in drop)]
+    new = []
+    for (d, p), (subj, teach, room, cancelled) in mine:
+        if cancelled:
+            continue
+        s, e = TIMES[p]
+        ymd = d.replace("-", "")
+        uid = uuid.uuid5(uuid.NAMESPACE_URL, f"zamini|{file_group}|{d}|{p}|{subj}")
+        desc = ", ".join(x for x in (teach, f"ауд. {room}" if room else "") if x)
+        new.append("\r\n".join(["BEGIN:VEVENT", f"UID:{uid}@sheet",
+            f"DTSTAMP:{datetime.datetime.now(datetime.timezone.utc):%Y%m%dT%H%M%SZ}",
+            f"DTSTART:{ymd}T{s.replace(':', '')}00", f"DTEND:{ymd}T{e.replace(':', '')}00",
+            f"SUMMARY:{subj} (заміна)", f"DESCRIPTION:{desc}", f"LOCATION:{room}", "END:VEVENT"]))
+    return "".join(out) + ("\r\n".join(new) + "\r\n" if new else "") + "END:VCALENDAR" + tail
 
 def sheet_groups(grid):
     """Header cells may hold several groups sharing one block ('1Т-21 3Т-22')."""
@@ -459,6 +529,7 @@ if __name__ == "__main__":
         if not jobs:
             raise SystemExit(f"group {a.group} not found on any sheet")
     pages = []
+    repl = fetch_replacements()
     for sheet, g, grid in jobs:
         lessons = parse_group(grid, g)
         subs = sorted({L["sub"] for L in lessons if L.get("sub")}) or [""] if a.group == "all" else [""]
@@ -466,9 +537,13 @@ if __name__ == "__main__":
             out = a.o if a.group != "all" else os.path.join("calendars", f"{g}-{sub}.ics" if sub else f"{g}.ics")
             os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
             open(out, "w", encoding="utf-8").write(to_ics(lessons, monday, a.weeks, g, a.flip_weeks, sub))
+            label = f"{g}-{sub}" if sub else g
+            if repl:
+                txt = apply_replacements(open(out, encoding="utf-8").read(), label, repl)
+                open(out, "w", encoding="utf-8").write(txt)
             print(f"{g}{'-' + sub if sub else ''}: {len(lessons)} pairs/week -> {out}")
             if a.group == "all":
-                pages.append((sheet, f"{g}-{sub}" if sub else g, os.path.basename(out)))
+                pages.append((sheet, label, os.path.basename(out)))
     if a.group == "all":
         # ponytail: drop stale files (e.g. graduated groups) so dead links never linger
         keep = {os.path.basename(p[2]) for p in pages}
