@@ -1,0 +1,50 @@
+
+const parse=t=>{t=t.replace(/\r\n[ \t]/g,'');const ev=[];let c={};
+for(const l of t.split(/\r\n|\n/)){const i=l.indexOf(':');
+if(l==='BEGIN:VEVENT')c={};else if(l==='END:VEVENT'){if(c.dt)ev.push(c);c={}}
+else if(i>0){const k=l.slice(0,i),v=l.slice(i+1);
+if(k==='DTSTART')c.dt=v;else if(k==='DTEND')c.en=v;else if(k==='SUMMARY')c.s=v;else if(k==='LOCATION')c.l=v;else if(k==='DESCRIPTION')c.d=v}}return ev};
+
+const cards=[...document.querySelectorAll('.card')];
+let sheet='';
+const apply=()=>{const q=document.getElementById('q').value.trim().toLowerCase();
+cards.forEach(c=>c.style.display=(!sheet||c.dataset.s===sheet)&&c.dataset.g.includes(q)?'':'none');
+document.querySelectorAll('#secs h2').forEach(h=>{let n=h.nextElementSibling,v=false;
+[...n.children].forEach(k=>{if(k.style.display!=='none')v=true});h.style.display=v?'':'none';n.style.display=v?'grid':'none'})};
+document.getElementById('q').oninput=apply;
+document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));b.classList.add('on');sheet=b.dataset.s;apply()});
+const abs=p=>new URL(p,location.href).href;
+document.querySelectorAll('[data-gcal]').forEach(a=>a.href='https://calendar.google.com/calendar/r?cid='+encodeURIComponent(abs(a.dataset.gcal)));
+document.querySelectorAll('[data-sub]').forEach(a=>a.href=abs(a.dataset.sub).replace(/^https?/,'webcal'));
+const dlg=document.getElementById('how'),lk=document.getElementById('lk'),cp=document.getElementById('cp');
+document.querySelectorAll('[data-link]').forEach(b=>b.onclick=()=>{lk.value=abs(b.dataset.link);cp.textContent='Копіювати';lock();dlg.showModal()});
+cp.onclick=()=>{(navigator.clipboard?navigator.clipboard.writeText(lk.value):Promise.reject()).then(()=>cp.textContent='Готово!',()=>lk.select())};
+document.getElementById('nope').onclick=()=>dlg.close();
+dlg.onclick=e=>{if(e.target===dlg)dlg.close()};
+const lock=()=>document.body.style.overflow='hidden',unlock=()=>document.body.style.overflow='';
+const pvw=document.getElementById('pvw'),pgrid=document.getElementById('pgrid'),pname=document.getElementById('pname');
+const pch=document.getElementById('pch'),pzn=document.getElementById('pzn');
+const iw=d=>{const x=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=(x.getUTCDay()+6)%7;x.setUTCDate(x.getUTCDate()-day+3);const f=new Date(Date.UTC(x.getUTCFullYear(),0,4));return 1+Math.round((x-f)/6048e5)};
+const wd=s=>{const d=new Date(+s.slice(0,4),+s.slice(4,6)-1,+s.slice(6,8));return (d.getDay()+6)%7};
+let PAR=0,PEV=[],PDI=((w)=>(w>4?0:w))((new Date().getDay()+6)%7);
+const drawPv=()=>{const DD=['ПН','ВТ','СР','ЧТ','ПТ'],T0=480,T1=1320,HR=46;
+if(!PEV.length){pgrid.innerHTML='<p class="sub">Порожньо: файл розкладу не завантажився або не розібрався.</p>';return}
+const mm=s=>+s.slice(9,11)*60+ +s.slice(11,13),T2=m=>Math.floor(m/60)+':'+String(m%60).padStart(2,'0');
+const ev=PEV.filter(x=>PAR?!((x.s||'').includes('(чис.)')):!((x.s||'').includes('(знам.)')));
+let h='<div class=tg-tabs>'+DD.map((d,i)=>'<button class="chip'+(i===PDI?' on':'')+'" data-d="'+i+'">'+d+'</button>').join('')+'</div>';
+h+='<div class=tg-head>'+DD.map(d=>'<div>'+d+'</div>').join('')+'</div>';
+h+='<div class=tg-body><div class=tg-in style="height:'+((T1-T0)/60*HR)+'px">';
+for(let m=T0;m<=T1;m+=60)h+='<div class=tg-line style="top:'+(m-T0)/60*HR+'px"></div><div class=tg-h style="top:'+(m-T0)/60*HR+'px">'+T2(m)+'</div>';
+h+='<div class=tg-cols>'+[0,1,2,3,4].map(i=>{const es=ev.filter(x=>wd(x.dt)===i).sort((a,b)=>a.dt<b.dt?-1:1);
+return '<div class="tg-col'+(i===PDI?' on':'')+'">'+es.map(x=>{const a=mm(x.dt),b=mm(x.en);
+return '<div class=tev style="top:'+(a-T0)/60*HR+'px;height:'+Math.max(20,(b-a)/60*HR-3)+'px"><b>'+x.s+'</b><span>'+T2(a)+'–'+T2(b)+(x.l?' · '+x.l:'')+'</span></div>'}).join('')+'</div>'}).join('')+'</div></div></div>';
+pgrid.innerHTML=h;
+pgrid.querySelectorAll('.tg-tabs .chip').forEach(b=>b.onclick=()=>{PDI=+b.dataset.d;drawPv()})};
+const setPar=v=>{PAR=v;pch.classList.toggle('on',!v);pzn.classList.toggle('on',!!v);drawPv()};
+pch.onclick=()=>setPar(0);pzn.onclick=()=>setPar(1);
+document.querySelectorAll('.card').forEach(c=>c.onclick=e=>{if(e.target.closest('a,button'))return;
+pname.textContent=c.querySelector('.t').textContent;
+fetch(c.querySelector('[data-gcal]').dataset.gcal,{cache:'reload'}).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{PEV=parse(t);setPar(iw(new Date())%2?1:0);drawPv();lock();pvw.showModal()}).catch(()=>{PEV=[];pname.textContent=c.querySelector('.t').textContent;drawPv();lock();pvw.showModal()})});
+document.getElementById('pclose').onclick=()=>pvw.close();
+pvw.onclick=e=>{if(e.target===pvw)pvw.close()};
+dlg.addEventListener('close',unlock);pvw.addEventListener('close',unlock);

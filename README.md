@@ -30,7 +30,7 @@ college starts the semester on the other foot.
 
 ## Layout
 
-- `schedule_to_ics.py` — fetcher, parser, `.ics` writer, page generator
+- `schedule_to_ics.py` — fetcher, parser, `.ics` writer, page generator (`style.css`/`app.js` inlined at build)
 - `index.html` — generated, do not edit by hand
 - `calendars/` — generated per-group files
 - `.github/workflows/schedule.yml` — the 6-hour regen
