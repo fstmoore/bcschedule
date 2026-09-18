@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Sheet -> ICS. Stdlib only. Usage: python3 schedule_to_ics.py --group 1Д-22 --start 2026-09-14 --weeks 4 -o out.ics"""
-import argparse, glob, html, io, os, re, urllib.request, uuid, datetime, zipfile
+import argparse, glob, html, io, os, re, urllib.request, urllib.parse, uuid, datetime, zipfile
 import xml.etree.ElementTree as ET
 
 SHEET_ID = "1SXdz3k3Ect865_IIL3vm-Ia1LvNhK3ls"
@@ -121,7 +121,7 @@ def apply_replacements(ics, file_group, repl):
     body, tail = ics.rsplit("END:VCALENDAR", 1)
     head, *events = body.split("BEGIN:VEVENT")
     drop = {f"DTSTART:{d.replace('-', '')}T{TIMES[p][0].replace(':', '')}00" for (d, p), _ in mine}
-    out = [head + "BEGIN:VEVENT" + e for e in events if not any(x in e for x in drop)]
+    kept = "".join("BEGIN:VEVENT" + e for e in events if not any(x in e for x in drop))
     new = []
     for (d, p), (subj, teach, room, cancelled) in mine:
         if cancelled:
@@ -134,7 +134,7 @@ def apply_replacements(ics, file_group, repl):
             f"DTSTAMP:{datetime.datetime.now(datetime.timezone.utc):%Y%m%dT%H%M%SZ}",
             f"DTSTART:{ymd}T{s.replace(':', '')}00", f"DTEND:{ymd}T{e.replace(':', '')}00",
             f"SUMMARY:{subj} (заміна)", f"DESCRIPTION:{desc}", f"LOCATION:{room}", "END:VEVENT"]))
-    return "".join(out) + ("\r\n".join(new) + "\r\n" if new else "") + "END:VCALENDAR" + tail
+    return head + kept + ("\r\n".join(new) + "\r\n" if new else "") + "END:VCALENDAR" + tail
 
 def sheet_groups(grid):
     """Header cells may hold several groups sharing one block ('1Т-21 3Т-22')."""
@@ -438,11 +438,13 @@ def render_index(pages):
         f'<button class="chip" data-s="{html.escape(s.strip())}">{html.escape(s.strip())}</button>'
         for s, _ in sheets]
     def card(sheet, label, fname, i):
+        enc = urllib.parse.quote(fname)  # Cyrillic filenames percent-encoded so hrefs are valid URLs
+        absu = f"{BASE}/calendars/{enc}"
         return (
             f'<div class="card" style="animation-delay:{min(i * 20, 400)}ms" data-g="{html.escape(label.lower())}" data-s="{html.escape(sheet.strip())}">'
             f'<span class="t">{html.escape(label)}</span><span class="row">'
-            f'<a class="btn fill" href="#" data-gcal="calendars/{html.escape(fname)}">В Google-календар</a>'
-            f'<a class="btn tonal" href="#" data-sub="calendars/{html.escape(fname)}">Інший календар</a>'
+            f'<a class="btn fill" href="https://calendar.google.com/calendar/r?cid={urllib.parse.quote(absu, safe="")}" data-gcal="calendars/{html.escape(fname)}">В Google-календар</a>'
+            f'<a class="btn tonal" href="{absu.replace("https://", "webcal://")}" data-sub="calendars/{html.escape(fname)}">Інший календар</a>'
             f'<button class="btn out" data-link="calendars/{html.escape(fname)}">Лінк</button>'
             f'</span></div>')
     secs = "".join(
@@ -553,12 +555,11 @@ if __name__ == "__main__":
         open("index.html", "w", encoding="utf-8").write(render_index(pages))
         print(f"index.html ({len(pages)} groups)")
         today = datetime.date.today().isoformat()
-        files = sorted({p[2] for p in pages})
-        urls = [""] + [f"calendars/{f}" for f in files]
+        # ponytail: sitemap lists only the page; .ics files are text/calendar, not indexable, and poison sitemap quality
         sm = ['<?xml version="1.0" encoding="UTF-8"?>',
-              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'] + [
-              f"<url><loc>{BASE}/{u}</loc><lastmod>{today}</lastmod></url>" for u in urls
-        ] + ["</urlset>"]
+              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+              f"<url><loc>{BASE}/</loc><lastmod>{today}</lastmod></url>",
+              "</urlset>"]
         open("sitemap.xml", "w", encoding="utf-8").write("\n".join(sm) + "\n")
         bots = ["GPTBot", "ChatGPT-User", "ClaudeBot", "anthropic-ai", "PerplexityBot", "Bytespider"]
         open("robots.txt", "w", encoding="utf-8").write(
