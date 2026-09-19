@@ -3,7 +3,7 @@
 import argparse, glob, html, io, os, re, urllib.request, urllib.parse, uuid, datetime, zipfile
 import xml.etree.ElementTree as ET
 
-SHEET_ID = "1SXdz3k3Ect865_IIL3vm-Ia1LvNhK3ls"
+SHEET_ID = "15lyVaUfBsadJLdFmXAYr_eldqLbcBLjc"  # official sheet, via http://78.137.2.119:2929/mod/forum/discuss.php?d=2#p2
 MOODLE_URL = "http://78.137.2.119:2929/mod/forum/discuss.php?d=45"
 BASE = "https://schdl.eu.cc"
 NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
@@ -61,7 +61,7 @@ def fetch_sheets(sheet_id=SHEET_ID):
               for si in ET.fromstring(z.read("xl/sharedStrings.xml")).iter(NS + "si")]
     out = []
     for s in wb.iter(NS + "sheet"):
-        if s.get("state") != "visible":
+        if s.get("state", "visible") != "visible":  # absent state = visible; the new sheet omits it
             continue
         path = "xl/" + rels[s.get(REL + "id")].split("xl/")[-1]
         out.append((s.get("name"), _sheet_grid(z, path, shared)))
@@ -289,7 +289,6 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 def _asset(name):
     with open(os.path.join(_HERE, name), encoding="utf-8") as f:
         return f.read()
-_CSS = _asset("style.css")
 _JS = _asset("app.js")  # preview logic, including the ics parser
 
 
@@ -297,13 +296,14 @@ _JS = _asset("app.js")  # preview logic, including the ics parser
 def render_index(pages):
     """One static page: pick your group, get its .ics link. No deps, no build step."""
     import html
+    flat = lambda s: re.sub(r"\s+", " ", s.strip())  # display text; data-s keeps raw spacing for filtering
     sheets = []
     for sheet, label, fname in pages:
         if not sheets or sheets[-1][0] != sheet:
             sheets.append((sheet, []))
         sheets[-1][1].append((label, fname))
     chips = ['<button class="chip on" data-s="">Усі</button>'] + [
-        f'<button class="chip" data-s="{html.escape(s.strip())}">{html.escape(s.strip())}</button>'
+        f'<button class="chip" data-s="{html.escape(s.strip())}">{html.escape(flat(s))}</button>'
         for s, _ in sheets]
     def card(sheet, label, fname, i):
         enc = urllib.parse.quote(fname)  # Cyrillic filenames percent-encoded so hrefs are valid URLs
@@ -311,46 +311,38 @@ def render_index(pages):
         return (
             f'<div class="card" style="animation-delay:{min(i * 20, 400)}ms" data-g="{html.escape(label.lower())}" data-s="{html.escape(sheet.strip())}">'
             f'<span class="t">{html.escape(label)}</span><span class="row">'
-            f'<a class="btn fill" href="https://calendar.google.com/calendar/r?cid={urllib.parse.quote(absu, safe="")}" data-gcal="calendars/{html.escape(fname)}">В Google-календар</a>'
-            f'<a class="btn tonal" href="{absu.replace("https://", "webcal://")}" data-sub="calendars/{html.escape(fname)}">Інший календар</a>'
-            f'<button class="btn out" data-link="calendars/{html.escape(fname)}">Лінк</button>'
+            f'<a class="btn fill" href="https://calendar.google.com/calendar/r?cid={urllib.parse.quote(absu, safe="")}" data-gcal="calendars/{html.escape(fname)}"><svg class="ic"><use href="#i-gcal"/></svg>В Google-календар</a>'
+            f'<a class="btn tonal" href="{absu.replace("https://", "webcal://")}" data-sub="calendars/{html.escape(fname)}"><svg class="ic"><use href="#i-cal"/></svg>Інший календар</a>'
+            f'<button class="btn out" data-link="calendars/{html.escape(fname)}"><svg class="ic"><use href="#i-link"/></svg>Лінк</button>'
             f'</span></div>')
     secs = "".join(
-        f"<h2>{html.escape(s.strip())}</h2><div class='grid'>"
+        f"<h2>{html.escape(flat(s))}</h2><div class='grid'>"
         + "".join(card(s, label, fname, i) for i, (label, fname) in enumerate(items)) + "</div>"
         for s, items in sheets)
     ts = datetime.datetime.now(datetime.timezone.utc).strftime("%d.%m.%Y %H:%M")
     return f"""<!doctype html><html lang="uk"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Розклад, який живе в календарі</title>
+<title>BCSchedule</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<meta name="description" content="Розклад занять ЧДБК — Черкаського державного фахового бізнес-коледжу (ЧДФБК) — у вигляді календаря: обери групу, додай у Google-календар або будь-який інший. Оновлюється кожні 6 годин. Неофіційний проєкт, не афілійований з коледжем.">
+<meta name="description" content="Неофіційний розклад занять ЧДБК (ЧДФБК) з можливістю додавання у календар">
 <meta name="keywords" content="розклад, ЧДБК, ЧДФБК, Черкаський державний фаховий бізнес-коледж, розклад занять, календар, групи, пари">
 <meta name="theme-color" content="#edf2e6">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Нормальний розклад, який живе у календарі">
-<meta property="og:description" content="Обирай групу — пари самі прийдуть у твій календар. Без гугл-таблички.">
+<meta property="og:title" content="Неофіційний розклад пар ЧДБК">
+<meta property="og:description" content="Обирай групу — пари самі прийдуть у твій календар">
 <script data-goatcounter="https://bcschedule.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 <meta name="google-site-verification" content="uGk621K82j_O0Twhiou4c1LqOzossy-005O0nijx-Ig" />
-<style>{_CSS}</style></head><body><div class="wrap">
-<div class="hero"><h1>Нормальний розклад, <br>який живе у календарі</h1>
+<link rel="stylesheet" href="style.css"></head><body><svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs><symbol id="i-search" viewBox="0 -960 960 960"><path d="M796-121 533-384q-30 26-70 40.5T378-329q-108 0-183-75t-75-181q0-106 75-181t182-75q106 0 180.5 75T632-585q0 43-14 83t-42 75l264 262-44 44ZM377-389q81 0 138-57.5T572-585q0-81-57-138.5T377-781q-82 0-139.5 57.5T180-585q0 81 57.5 138.5T377-389Z"/></symbol><symbol id="i-help" viewBox="0 -960 960 960"><path d="M511-258q11-11 11-27t-11-27q-11-11-27-11t-27 11q-11 11-11 27t11 27q11 11 27 11t27-11Zm-62-135h59q0-26 6.5-47.5T555-490q31-26 44-51t13-55q0-53-34.5-85T486-713q-49 0-86.5 24.5T345-621l53 20q11-28 33-43.5t52-15.5q34 0 55 18.5t21 47.5q0 22-13 41.5T508-512q-30 26-44.5 51.5T449-393Zm31 313q-82 0-155-31.5t-127.5-86Q143-252 111.5-325T80-480q0-83 31.5-156t86-127Q252-817 325-848.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 82-31.5 155T763-197.5q-54 54.5-127 86T480-80Zm0-60q142 0 241-99.5T820-480q0-142-99-241t-241-99q-141 0-240.5 99T140-480q0 141 99.5 240.5T480-140Zm0-340Z"/></symbol><symbol id="i-info" viewBox="0 -960 960 960"><path d="M453-280h60v-240h-60v240Zm50.5-323.2q9.5-9.2 9.5-22.8 0-14.45-9.48-24.22-9.48-9.78-23.5-9.78t-23.52 9.78Q447-640.45 447-626q0 13.6 9.48 22.8 9.48 9.2 23.5 9.2t23.52-9.2ZM480.27-80q-82.74 0-155.5-31.5Q252-143 197.5-197.5t-86-127.34Q80-397.68 80-480.5t31.5-155.66Q143-709 197.5-763t127.34-85.5Q397.68-880 480.5-880t155.66 31.5Q709-817 763-763t85.5 127Q880-563 880-480.27q0 82.74-31.5 155.5Q817-252 763-197.68q-54 54.31-127 86Q563-80 480.27-80Zm.23-60Q622-140 721-239.5t99-241Q820-622 721.19-721T480-820q-141 0-240.5 98.81T140-480q0 141 99.5 240.5t241 99.5Zm-.5-340Z"/></symbol><symbol id="i-gcal" viewBox="0 -960 960 960"><path d="M700-80v-120H580v-60h120v-120h60v120h120v60H760v120h-60Zm-520-80q-24 0-42-18t-18-42v-540q0-24 18-42t42-18h65v-60h65v60h260v-60h65v60h65q24 0 42 18t18 42v302q-15-2-30-2t-30 2v-112H180v350h320q0 15 3 30t8 30H180Zm0-470h520v-130H180v130Zm0 0v-130 130Z"/></symbol><symbol id="i-cal" viewBox="0 -960 960 960"><path d="M180-80q-24 0-42-18t-18-42v-620q0-24 18-42t42-18h65v-60h65v60h340v-60h65v60h65q24 0 42 18t18 42v620q0 24-18 42t-42 18H180Zm0-60h600v-430H180v430Zm0-490h600v-130H180v130Zm0 0v-130 130Zm300 230q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-188.5-11.5Q280-423 280-440t11.5-28.5Q303-480 320-480t28.5 11.5Q360-457 360-440t-11.5 28.5Q337-400 320-400t-28.5-11.5ZM640-400q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-188.5-11.5Q280-263 280-280t11.5-28.5Q303-320 320-320t28.5 11.5Q360-297 360-280t-11.5 28.5Q337-240 320-240t-28.5-11.5ZM640-240q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z"/></symbol><symbol id="i-link" viewBox="0 -960 960 960"><path d="M450-280H280q-83 0-141.5-58.5T80-480q0-83 58.5-141.5T280-680h170v60H280q-58.33 0-99.17 40.76-40.83 40.77-40.83 99Q140-422 180.83-381q40.84 41 99.17 41h170v60ZM325-450v-60h310v60H325Zm185 170v-60h170q58.33 0 99.17-40.76 40.83-40.77 40.83-99Q820-538 779.17-579q-40.84-41-99.17-41H510v-60h170q83 0 141.5 58.5T880-480q0 83-58.5 141.5T680-280H510Z"/></symbol></defs></svg><nav class="nav"><div class="nav-in"><a class="brand" href="index.html">BCSchedule</a><div class="search"><svg class="ic"><use href="#i-search"/></svg><input id="q" placeholder="Знайди свою групу…" autocomplete="off"></div><span class="nav-links"><a href="guide.html">Як додати?</a><a href="info.html">Інфо</a></span></div></nav><div class="wrap">
+<div class="hero"><h1>Розклад пар, зроблений студентами для студентів</h1>
 <svg class="vine" viewBox="0 0 420 34" aria-hidden="true">
-<path d="M4 26 C 90 6, 180 30, 260 14 S 380 10, 416 20"/>
-<ellipse class="l1" cx="120" cy="14" rx="11" ry="5" transform="rotate(-24 120 14)"/>
-<ellipse class="l2" cx="250" cy="20" rx="11" ry="5" transform="rotate(18 250 20)"/>
-<ellipse class="l3" cx="350" cy="13" rx="11" ry="5" transform="rotate(-18 350 13)"/>
+<path d="M4 20 C 90 8, 170 30, 250 15 S 380 10, 416 19"/>
+<ellipse class="l1" cx="105" cy="12" rx="11" ry="5" transform="rotate(-24 105 12)"/>
+<ellipse class="l2" cx="210" cy="17" rx="6" ry="6"/>
+<ellipse class="l3" cx="315" cy="12" rx="11" ry="5" transform="rotate(18 315 12)"/>
 </svg>
-<p class="sub">Оновлюється сам, враховує заміни. Гудбай гугл табличка</p>
-<p class="fine"><b>Конфіденційність: нам начхати на твої дані.</b> У прямому сенсі.
-Ця сторінка майже нічого не збирає: один безкуковий лічильник переглядів (GoatCounter) —
-без імен, пошт та ідентифікаторів. Немає акаунтів, трекерів або сервера, з якого можна злити базу. Єдине, що відбувається, —
-твій телефон качає статичний файл з парами. Параноїш — відкрий .ics блокнотом, там лише пари.</p>
-<p class="fine"><b>Умови: ми не всевидющі, а ти — дорослий.</b> Розклад береться
-з гугл-таблички коледжу, а отже, містить їхні помилки: перенесення, скасування, раптові
-«дивіться оновлення». Ми не сидимо на їхніх нарадах (та й на пара нечасто) і фізично не знаємо про все, що відбувається.
-Перед важливими парами звіряйся з офіційним розкладом. Прогуляв пару, завалив сесію,
-відрахували — твої проблеми, не наші. Ми лише переклали табличку в календар.</p></div>
-<div class="search"><input id="q" placeholder="Знайди свою групу…" autocomplete="off"></div>
+<p class="sub">З автоматичним оновленням та враховуванням замін</p>
+<p class="sub">Доволі багато навчальних закладів надають змогу експортувати розклад зайнять у календар. Це зручно - пари відображаються разом із іншими подіями, а при їх заміні - автоматично переміщуються або зникають. За допомогою магії <s>та костилів</s>, ми перетворили Google Sheet у такий календар. Тепер не потрібно відкривати розклад, документи з замінами та дзвінками - все знаходиться у одному місці (у всіх можливих сенсах)</p>
+<span class="row"><a class="btn fill" href="guide.html"><svg class="ic"><use href="#i-help"/></svg>Як додати?</a><a class="btn tonal" href="info.html"><svg class="ic"><use href="#i-info"/></svg>Додаткова інформація</a></span></div>
 <div class="chips">{"".join(chips)}</div>
 <div id="secs">{secs}</div>
 <dialog id="how"><h3>Як додати розклад</h3>
@@ -364,11 +356,10 @@ Google: Календар → Інші календарі → Додати за U
 <div class="chips"><button class="chip" id="pch">Чисельник</button><button class="chip" id="pzn">Знаменник</button></div>
 <div id="pgrid"></div>
 <div class="row"><button class="btn out" id="pclose">Закрити</button></div></dialog>
-<footer>Поливаємо кожні 6 годин — розклад сам росте з гугл-таблички.
-<br>Vibecoded in 2 hrs without a wage.
+<footer>Оновлюється кожні 6 годин
 <br>Останнє оновлення: {ts} (UTC).
-<br>Розклад ЧДБК — Черкаський державний фаховий бізнес-коледж (ЧДФБК).
-<br>Неофіційний проєкт, не афілійований з коледжем.</footer>
+<br>Розклад ЧДБК - Черкаський державний фаховий бізнес-коледж (ЧДФБК)
+<br><b>Неофіційний проєкт, не афілійований з коледжем</b></footer>
 <script>{_JS}</script></div></body></html>
 """
 
@@ -423,11 +414,11 @@ if __name__ == "__main__":
         open("index.html", "w", encoding="utf-8").write(render_index(pages))
         print(f"index.html ({len(pages)} groups)")
         today = datetime.date.today().isoformat()
-        # ponytail: sitemap lists only the page; .ics files are text/calendar, not indexable, and poison sitemap quality
+        # ponytail: sitemap lists only indexable pages; .ics files are text/calendar, not indexable, and poison sitemap quality
         sm = ['<?xml version="1.0" encoding="UTF-8"?>',
-              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-              f"<url><loc>{BASE}/</loc><lastmod>{today}</lastmod></url>",
-              "</urlset>"]
+              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'] + [
+              f"<url><loc>{BASE}/{u}</loc><lastmod>{today}</lastmod></url>" for u in ("", "guide.html", "info.html")
+        ] + ["</urlset>"]
         open("sitemap.xml", "w", encoding="utf-8").write("\n".join(sm) + "\n")
         bots = ["GPTBot", "ChatGPT-User", "ClaudeBot", "anthropic-ai", "PerplexityBot", "Bytespider"]
         open("robots.txt", "w", encoding="utf-8").write(

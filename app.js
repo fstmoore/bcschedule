@@ -8,6 +8,7 @@ if(k==='DTSTART')c.dt=v;else if(k==='DTEND')c.en=v;else if(k==='SUMMARY')c.s=v;e
 const cards=[...document.querySelectorAll('.card')];
 let sheet='';
 const apply=()=>{const q=document.getElementById('q').value.trim().toLowerCase();
+document.querySelector('.hero').style.display=q?'none':'';
 cards.forEach(c=>c.style.display=(!sheet||c.dataset.s===sheet)&&c.dataset.g.includes(q)?'':'none');
 document.querySelectorAll('#secs h2').forEach(h=>{let n=h.nextElementSibling,v=false;
 [...n.children].forEach(k=>{if(k.style.display!=='none')v=true});h.style.display=v?'':'none';n.style.display=v?'grid':'none'})};
