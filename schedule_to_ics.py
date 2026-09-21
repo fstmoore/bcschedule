@@ -10,10 +10,10 @@ NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 REL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 
 # bells: https://drive.google.com/file/d/1piTUM_2_NWuXF9ZYWc0IbIno0exC-ArY/view (sheet pair N = bell N)
-TIMES = {0: ("08:00", "08:50"), 1: ("09:00", "10:20"), 2: ("10:30", "11:50"), 3: ("12:00", "13:20"),
-         4: ("13:40", "15:00"), 5: ("15:10", "16:30"), 6: ("16:40", "18:00"), 7: ("18:10", "19:00"),
+TIMES = {0: ("08:00", "08:50"), 1: ("09:00", "10:00"), 2: ("10:10", "11:10"), 3: ("11:20", "12:20"),
+         4: ("12:40", "13:40"), 5: ("13:50", "14:50"), 6: ("15:00", "16:00"), 7: ("16:10", "17:10"),
          # ponytail: bells PDF ends at VII; 8/9 extrapolated +80min, fix when college publishes them
-         8: ("19:10", "20:30"), 9: ("20:40", "22:00")}
+         8: ("17:20", "18:20"), 9: ("18:30", "19:30")}
 
 def _colletters(ref):
     col = re.match(r"[A-Z]+", ref).group(0)
