@@ -3,7 +3,7 @@
 import argparse, glob, html, io, os, re, urllib.request, urllib.parse, uuid, datetime, zipfile
 import xml.etree.ElementTree as ET
 
-SHEET_ID = "1ps2X8iTdSgZVO8NB1r5XdzBat7jCQ2pM"  # official sheet, via http://78.137.2.119:2929/mod/forum/discuss.php?d=2#p2
+SHEET_ID = "10DqTFyyQ0m5s4aY24y566wT0YElYpgQz"  # official sheet, via http://78.137.2.119:2929/mod/forum/discuss.php?d=2#p2
 MOODLE_URL = "http://78.137.2.119:2929/mod/forum/discuss.php?d=45"
 BASE = "https://schdl.eu.cc"
 NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
