@@ -2,7 +2,7 @@
 const parse=t=>{t=t.replace(/\r\n[ \t]/g,'');const ev=[];let c={};
 for(const l of t.split(/\r\n|\n/)){const i=l.indexOf(':');
 if(l==='BEGIN:VEVENT')c={};else if(l==='END:VEVENT'){if(c.dt)ev.push(c);c={}}
-else if(i>0){const k=l.slice(0,i),v=l.slice(i+1);
+else if(i>0){const k=l.slice(0,i).split(';')[0],v=l.slice(i+1);
 if(k==='DTSTART')c.dt=v;else if(k==='DTEND')c.en=v;else if(k==='SUMMARY')c.s=v;else if(k==='LOCATION')c.l=v;else if(k==='DESCRIPTION')c.d=v}}return ev};
 
 const cards=[...document.querySelectorAll('.card')];
