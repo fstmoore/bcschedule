@@ -335,7 +335,7 @@ def render_index(pages):
         return (
             f'<div class="card" style="animation-delay:{min(i * 20, 400)}ms" data-g="{html.escape(label.lower())}" data-s="{html.escape(sheet.strip())}">'
             f'<span class="t">{html.escape(label)}</span><span class="row">'
-            f'<a class="btn fill" href="https://calendar.google.com/calendar/r?cid={urllib.parse.quote(absu, safe="")}" data-gcal="calendars/{html.escape(fname)}"><svg class="ic"><use href="#i-gcal"/>[...]
+            f'<a class="btn fill" href="https://calendar.google.com/calendar/r?cid={urllib.parse.quote(absu, safe=\'\')}" data-gcal="calendars/{html.escape(fname)}"><svg class="ic"><use href="#i-gcal"/>[...]
             f'<a class="btn tonal" href="{absu.replace("https://", "webcal://")}" data-sub="calendars/{html.escape(fname)}"><svg class="ic"><use href="#i-cal"/></svg>Інший календар</a>'
             f'<button class="btn out" data-link="calendars/{html.escape(fname)}"><svg class="ic"><use href="#i-link"/></svg>Лінк</button>'
             f'</span></div>')
