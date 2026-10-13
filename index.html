@@ -35,14 +35,14 @@ Google: Календар → Інші календарі → Додати за U
 <div id="pgrid"></div>
 <div class="row"><button class="btn out" id="pclose">Закрити</button></div></dialog>
 <footer>Оновлюється кожні 6 годин
-<br>Останнє оновлення: 04.10.2026 20:52 (UTC).
+<br>Останнє оновлення: 13.10.2026 11:29 (UTC).
 <br>Розклад ЧДБК - Черкаський державний фаховий бізнес-коледж (ЧДФБК)
 <br><b>Неофіційний проєкт, не афілійований з коледжем</b></footer>
 <script>
 const parse=t=>{t=t.replace(/\r\n[ \t]/g,'');const ev=[];let c={};
 for(const l of t.split(/\r\n|\n/)){const i=l.indexOf(':');
 if(l==='BEGIN:VEVENT')c={};else if(l==='END:VEVENT'){if(c.dt)ev.push(c);c={}}
-else if(i>0){const k=l.slice(0,i),v=l.slice(i+1);
+else if(i>0){const k=l.slice(0,i).split(';')[0],v=l.slice(i+1);
 if(k==='DTSTART')c.dt=v;else if(k==='DTEND')c.en=v;else if(k==='SUMMARY')c.s=v;else if(k==='LOCATION')c.l=v;else if(k==='DESCRIPTION')c.d=v}}return ev};
 
 const cards=[...document.querySelectorAll('.card')];
